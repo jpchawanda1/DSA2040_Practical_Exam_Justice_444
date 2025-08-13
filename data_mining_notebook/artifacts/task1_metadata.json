@@ -1,0 +1,23 @@
+{
+  "data_option": "iris",
+  "n_rows": 150,
+  "feature_columns": [
+    "sepal length (cm)",
+    "sepal width (cm)",
+    "petal length (cm)",
+    "petal width (cm)"
+  ],
+  "class_labels": [
+    "setosa",
+    "versicolor",
+    "virginica"
+  ],
+  "train_size": 120,
+  "test_size": 30,
+  "outlier_counts": {
+    "sepal length (cm)": 0,
+    "sepal width (cm)": 4,
+    "petal length (cm)": 0,
+    "petal width (cm)": 0
+  }
+}
