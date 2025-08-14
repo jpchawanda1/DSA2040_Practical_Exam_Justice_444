@@ -142,7 +142,3 @@ Limitations / Next steps:
 - Product Category is inferred via keywords; replace with a governed product/category lookup for accuracy.
 - Association rules use synthetic transactions due to the lack of basket-level retail data in the repo; integrate a real basket dataset for stronger results when available.
 - Documentation diagrams are concise; a formal ERD could be added.
-
-## 8) License
-
-See `LICENSE`.
