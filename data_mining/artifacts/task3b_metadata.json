@@ -1,0 +1,7 @@
+{
+  "n_transactions": 45,
+  "min_support": 0.2,
+  "min_confidence": 0.5,
+  "rules_found": 38,
+  "top5_rules_count": 5
+}

@@ -4,7 +4,7 @@ Task 1 (DM): Data Preprocessing and Exploration for Iris
 Usage:
   python scripts/preprocessing_iris.py
 
-Outputs images and summary stats under data_mining_notebook/artifacts
+Outputs images and summary stats under data_mining/artifacts
 """
 from pathlib import Path
 import sys
@@ -25,7 +25,7 @@ def _ensure_root_on_path():
 _ensure_root_on_path()
 from utils import dm
 
-ART = Path('data_mining_notebook') / 'artifacts'
+ART = Path('data_mining') / 'artifacts'
 ART.mkdir(parents=True, exist_ok=True)
 
 

@@ -4,7 +4,7 @@ Task 2 (DM): Clustering on Iris
 Usage:
   python scripts/clustering_iris.py
 
-Outputs plots/metrics under data_mining_notebook/artifacts
+Outputs plots/metrics under data_mining/artifacts
 """
 from pathlib import Path
 import sys
@@ -26,7 +26,7 @@ _ensure_root_on_path()
 from utils import dm
 import pandas as pd
 
-ART = Path('data_mining_notebook') / 'artifacts'
+ART = Path('data_mining') / 'artifacts'
 ART.mkdir(parents=True, exist_ok=True)
 
 

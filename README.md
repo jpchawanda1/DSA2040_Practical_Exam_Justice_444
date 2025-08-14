@@ -6,7 +6,7 @@ This submission includes a complete retail data warehouse build (ETL + OLAP) and
 
 - Data Warehouse (DW):
   - Star schema implemented in SQLite with a single transactional fact and three dimensions.
-  - ETL from `raw_data/Online Retail.xlsx` into `data_warehouse_notebook/retail_dw.db`.
+  - ETL from `raw_data/Online Retail.xlsx` into `data_warehouse/retail_dw.db`.
   - OLAP queries and one visualization demonstrating roll-up, drill-down, and slice operations.
   - SQL deliverables in `sql/` and a lightweight star schema diagram under `docs/`.
 
@@ -21,7 +21,7 @@ Full project tree overview:
 
 ```text
 DSA2040_Practical_Exam_Justice_444/
-├─ data_warehouse_notebook/
+├─ data_warehouse/
 │  ├─ etl_task2.ipynb
 │  ├─ task3_olap_analysis.ipynb
 │  ├─ retail_data_warehouse.ipynb
@@ -30,7 +30,7 @@ DSA2040_Practical_Exam_Justice_444/
 │     ├─ fig_sales_by_country.png
 │     ├─ fig_quarterly_trend_country.png
 │     └─ fig_task3_sales_by_country.png
-├─ data_mining_notebook/
+├─ data_mining/
 │  ├─ task1_data_preprocessing.ipynb
 │  ├─ task2_clustering.ipynb
 │  ├─ task3_classification_association.ipynb
@@ -77,14 +77,14 @@ DSA2040_Practical_Exam_Justice_444/
 ├─ LICENSE
 └─ .gitattributes
 ```
-- `data_warehouse_notebook/etl_task2.ipynb` – ETL: reads Excel, cleans, builds dims, loads fact, writes `retail_dw.db`.
-- `data_warehouse_notebook/task3_olap_analysis.ipynb` – OLAP queries (roll-up, drill-down, slice) + visualization.
-- `data_warehouse_notebook/retail_dw.db` – SQLite database produced by ETL.
-- `data_mining_notebook/task1_data_preprocessing.ipynb` – preprocessing, scaling/encoding, EDA plots.
-- `data_mining_notebook/task2_clustering.ipynb` – KMeans clustering, metrics, elbow curve, PCA plot.
-- `data_mining_notebook/task3_classification_association.ipynb` – Decision Tree & KNN + association rules.
-- `data_mining_notebook/task3b_association_rules.ipynb` – stand-alone association rules focus.
-- `data_mining_notebook/artifacts/` – generated figures, CSVs, and metrics JSONs.
+- `data_warehouse/etl_task2.ipynb` – ETL: reads Excel, cleans, builds dims, loads fact, writes `retail_dw.db`.
+- `data_warehouse/task3_olap_analysis.ipynb` – OLAP queries (roll-up, drill-down, slice) + visualization.
+- `data_warehouse/retail_dw.db` – SQLite database produced by ETL.
+- `data_mining/task1_data_preprocessing.ipynb` – preprocessing, scaling/encoding, EDA plots.
+- `data_mining/task2_clustering.ipynb` – KMeans clustering, metrics, elbow curve, PCA plot.
+- `data_mining/task3_classification_association.ipynb` – Decision Tree & KNN + association rules.
+- `data_mining/task3b_association_rules.ipynb` – stand-alone association rules focus.
+- `data_mining/artifacts/` – generated figures, CSVs, and metrics JSONs.
 
 ## 3) Datasets Used
 
@@ -147,8 +147,8 @@ pip install -r requirements.txt
 ```
 
 Run the ETL and OLAP notebooks or scripts:
-- Open `data_warehouse_notebook/etl_task2.ipynb` and Run All to generate `retail_dw.db`.
-- Then open `data_warehouse_notebook/task3_olap_analysis.ipynb` and Run All to execute OLAP queries and save the country chart to `data_warehouse_notebook/artifacts/`.
+- Open `data_warehouse/etl_task2.ipynb` and Run All to generate `retail_dw.db`.
+- Then open `data_warehouse/task3_olap_analysis.ipynb` and Run All to execute OLAP queries and save the country chart to `data_warehouse/artifacts/`.
 
 Alternatively, run the scripts:
 
@@ -162,13 +162,13 @@ python scripts\clustering_iris.py
 python scripts\mining_iris_basket.py
 ```
 
-Run the Data Mining notebooks similarly in `data_mining_notebook/` (Run All). If `mlxtend` is not installed, the notebooks/scripts will fall back to a simple pairwise association rules approximation.
+Run the Data Mining notebooks similarly in `data_mining/` (Run All). If `mlxtend` is not installed, the notebooks/scripts will fall back to a simple pairwise association rules approximation.
 
 ## 6) Deliverables and Artifacts
 
-- SQLite database: `data_warehouse_notebook/retail_dw.db`
-- OLAP figures: `data_warehouse_notebook/artifacts/fig_sales_by_country.png`, `data_warehouse_notebook/artifacts/fig_quarterly_trend_country.png`
-- Data mining artifacts: PNGs/CSVs/JSONs under `data_mining_notebook/artifacts/` (e.g., elbow curve, PCA plot, decision tree, top rules CSV, metrics JSON)
+- SQLite database: `data_warehouse/retail_dw.db`
+- OLAP figures: `data_warehouse/artifacts/fig_sales_by_country.png`, `data_warehouse/artifacts/fig_quarterly_trend_country.png`
+- Data mining artifacts: PNGs/CSVs/JSONs under `data_mining/artifacts/` (e.g., elbow curve, PCA plot, decision tree, top rules CSV, metrics JSON)
 - `sql/schema.sql` – full DDL for the star schema (SQLite syntax)
 - `sql/olap_queries.sql` – three OLAP queries (roll-up, drill-down, slice)
 - `docs/schema_star.svg` – star schema diagram
@@ -178,7 +178,7 @@ Run the Data Mining notebooks similarly in `data_mining_notebook/` (Run All). If
 
 - Section 1 – Data Warehousing
   - Task 1 (Design): `docs/schema_star.svg` (diagram), README (schema explanation + star vs snowflake), `sql/schema.sql` (CREATE TABLEs)
-  - Task 2 (ETL): `scripts/etl_retail.py` (runs ETL), implementation in `utils/etl.py`, output DB at `data_warehouse_notebook/retail_dw.db`
+  - Task 2 (ETL): `scripts/etl_retail.py` (runs ETL), implementation in `utils/etl.py`, output DB at `data_warehouse/retail_dw.db`
   - Task 3 (OLAP): `sql/olap_queries.sql` (3 queries), visualization saved by OLAP notebook, analysis in `reports/olap_analysis.md`
 - Section 2 – Data Mining
   - Task 1 (Preprocessing/EDA): `scripts/preprocessing_iris.py` (+ artifacts)
