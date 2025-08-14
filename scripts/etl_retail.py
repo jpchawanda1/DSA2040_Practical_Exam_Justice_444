@@ -15,6 +15,7 @@ logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
 
 def find_project_root() -> Path:
+    """Walk up from CWD to find the project root using marker folders."""
     cwd = Path.cwd().resolve()
     markers = ["utils", "raw_data", ".git", "data_warehouse"]
     p = cwd
@@ -33,6 +34,7 @@ def main():
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
     from utils.etl import run_etl  # import after sys.path update
+    # Input/Output paths
     data_dir = root / 'raw_data'
     excel_path = data_dir / 'Online Retail.xlsx'
     db_path = root / 'data_warehouse' / 'retail_dw.db'

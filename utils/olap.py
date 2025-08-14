@@ -1,3 +1,9 @@
+"""
+OLAP helper functions operating on the retail star schema in SQLite.
+
+Includes a resilient DB connector and three example analysis queries:
+roll-up by country/quarter, drill-down by country/month, and a category slice.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,6 +12,7 @@ import pandas as pd
 
 
 def ensure_db(db_candidates: list[Path]) -> sqlite3.Connection:
+    """Return a sqlite3 connection to the first existing candidate DB path."""
     for p in db_candidates:
         if p.exists():
             return sqlite3.connect(p.resolve())
@@ -13,11 +20,13 @@ def ensure_db(db_candidates: list[Path]) -> sqlite3.Connection:
 
 
 def has_product_dim(conn: sqlite3.Connection) -> bool:
+    """Check if ProductDim is present in the connected database."""
     q = "SELECT name FROM sqlite_master WHERE type='table' AND name='ProductDim';"
     return pd.read_sql(q, conn).shape[0] == 1
 
 
 def rollup_country_quarter(conn: sqlite3.Connection) -> pd.DataFrame:
+    """Aggregate total sales by Country, Year, Quarter (roll-up)."""
     sql = '''
     SELECT sf.Country, t.Year, t.Quarter, ROUND(SUM(sf.TotalSales),2) AS total_sales
     FROM SalesFact sf
@@ -29,6 +38,7 @@ def rollup_country_quarter(conn: sqlite3.Connection) -> pd.DataFrame:
 
 
 def drilldown_country_month(conn: sqlite3.Connection, country: str) -> pd.DataFrame:
+    """Monthly trend for a specific country (drill-down)."""
     sql = '''
     SELECT t.Year, t.Month, SUM(sf.TotalSales) AS monthly_sales
     FROM SalesFact sf
@@ -41,6 +51,7 @@ def drilldown_country_month(conn: sqlite3.Connection, country: str) -> pd.DataFr
 
 
 def slice_category_totals(conn: sqlite3.Connection) -> pd.DataFrame:
+    """Slice total sales by product category; falls back if ProductDim is absent."""
     if has_product_dim(conn):
         sql = '''
         SELECT p.Category AS category, ROUND(SUM(f.TotalSales),2) AS total_sales

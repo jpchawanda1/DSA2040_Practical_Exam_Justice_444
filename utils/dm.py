@@ -1,3 +1,16 @@
+"""
+Data mining helpers for the Iris workflow.
+
+This module centralizes small, reusable utilities used by the notebooks and
+scripts under scripts/*.py. Functions are grouped by purpose: data loading,
+preprocessing/EDA, clustering, classification, association rules, and IO.
+
+Conventions:
+- All public functions include a docstring describing inputs/outputs.
+- Plot functions save figures to a provided path and do not return values.
+- Randomness: when applicable, expose a random_state argument (or document
+    deterministic defaults) to encourage reproducibility.
+"""
 from __future__ import annotations
 
 import json
@@ -22,6 +35,12 @@ from sklearn.neighbors import KNeighborsClassifier
 # ------------------------
 
 def load_iris_dataframe() -> pd.DataFrame:
+    """Load the scikit-learn Iris dataset as a tidy DataFrame.
+
+    Returns:
+        pd.DataFrame: Columns include the four numeric features and a string
+        target column named "class" with values {'setosa','versicolor','virginica'}.
+    """
     iris = load_iris(as_frame=True)
     df = iris.frame.copy()
     df.rename(columns={'target': 'class'}, inplace=True)
@@ -31,6 +50,14 @@ def load_iris_dataframe() -> pd.DataFrame:
 
 
 def generate_synthetic_dataframe(n_per_class: int = 50) -> pd.DataFrame:
+    """Generate a simple synthetic Iris-like dataset.
+
+    Args:
+        n_per_class: Number of samples per pseudo-class.
+
+    Returns:
+        pd.DataFrame: Numeric feature columns and a 'class' label column.
+    """
     specs = [
         ('setosa_like',   [5.0, 3.5, 1.5, 0.25], [0.25, 0.20, 0.15, 0.05]),
         ('versicolor_like',[6.0, 2.8, 4.2, 1.30], [0.30, 0.25, 0.30, 0.10]),
@@ -51,6 +78,14 @@ def generate_synthetic_dataframe(n_per_class: int = 50) -> pd.DataFrame:
 
 
 def load_or_generate(data_option: str = 'iris') -> pd.DataFrame:
+    """Return either the real Iris dataset or a synthetic alternative.
+
+    Args:
+        data_option: 'iris' for the real dataset; anything else yields synthetic.
+
+    Returns:
+        pd.DataFrame
+    """
     return load_iris_dataframe() if data_option == 'iris' else generate_synthetic_dataframe()
 
 
@@ -59,17 +94,45 @@ def load_or_generate(data_option: str = 'iris') -> pd.DataFrame:
 # ------------------------
 
 def split_features(df: pd.DataFrame, target_col: str = 'class') -> Tuple[pd.DataFrame, pd.Series, List[str]]:
+    """Split a DataFrame into features X, target y, and list of feature names.
+
+    Args:
+        df: Input DataFrame.
+        target_col: Name of the target column to exclude from X.
+
+    Returns:
+        (X, y, feature_cols)
+    """
     feature_cols = [c for c in df.columns if c != target_col]
     return df[feature_cols].copy(), df[target_col].copy(), feature_cols
 
 
 def scale_features(X: pd.DataFrame) -> pd.DataFrame:
+    """Min-max scale feature columns to [0,1] range.
+
+    Args:
+        X: Numeric feature DataFrame.
+
+    Returns:
+        pd.DataFrame: Scaled features with same columns.
+    """
     scaler = MinMaxScaler()
     X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
     return X_scaled
 
 
 def one_hot_encode(series: pd.Series) -> Tuple[pd.DataFrame, List[str]]:
+    """One-hot encode a pandas Series into indicator columns.
+
+    Args:
+        series: Categorical series to encode.
+
+    Returns:
+        (encoded_df, categories)
+    Notes:
+        Handles both new and older versions of scikit-learn where the
+        OneHotEncoder parameter name changed from sparse to sparse_output.
+    """
     try:
         ohe = OneHotEncoder(sparse_output=False)
     except TypeError:
@@ -82,12 +145,28 @@ def one_hot_encode(series: pd.Series) -> Tuple[pd.DataFrame, List[str]]:
 
 
 def save_summary_stats(X: pd.DataFrame, path: Path) -> pd.DataFrame:
+    """Compute and save basic summary statistics.
+
+    Args:
+        X: Numeric features.
+        path: Destination CSV file.
+
+    Returns:
+        The summary DataFrame.
+    """
     summary = X.describe().T
     summary.to_csv(path, index=True)
     return summary
 
 
 def plot_pairplot(df: pd.DataFrame, hue: str, save_path: Path) -> None:
+    """Create and save a Seaborn pairplot.
+
+    Args:
+        df: DataFrame containing features and hue column.
+        hue: Column name used for color grouping.
+        save_path: Output image path.
+    """
     sns.set_theme(style='whitegrid', context='notebook')
     pp = sns.pairplot(df, hue=hue, corner=True, diag_kind='hist')
     pp.fig.suptitle('Pairplot of Scaled Features by Class', y=1.02)
@@ -95,6 +174,12 @@ def plot_pairplot(df: pd.DataFrame, hue: str, save_path: Path) -> None:
 
 
 def plot_correlation_heatmap(X: pd.DataFrame, save_path: Path) -> None:
+    """Plot and save a correlation heatmap for features.
+
+    Args:
+        X: Numeric feature DataFrame.
+        save_path: Output image path.
+    """
     corr = X.corr()
     plt.figure(figsize=(6,5))
     sns.heatmap(corr, annot=True, cmap='coolwarm', fmt='.2f', square=True, cbar_kws={'shrink':0.8})
@@ -104,6 +189,15 @@ def plot_correlation_heatmap(X: pd.DataFrame, save_path: Path) -> None:
 
 
 def plot_boxplots_and_outliers(X_scaled: pd.DataFrame, save_path: Path) -> Dict[str, int]:
+    """Boxplots for each feature and IQR-based outlier counts.
+
+    Args:
+        X_scaled: Scaled features.
+        save_path: Output image path.
+
+    Returns:
+        Dict mapping feature name -> outlier count based on 1.5*IQR rule.
+    """
     feature_cols = list(X_scaled.columns)
     fig, axes = plt.subplots(1, len(feature_cols), figsize=(4*len(feature_cols), 4))
     if len(feature_cols) == 1:
@@ -125,6 +219,18 @@ def plot_boxplots_and_outliers(X_scaled: pd.DataFrame, save_path: Path) -> Dict[
 
 
 def train_test_split_custom(X: pd.DataFrame, y: pd.Series, test_size: float = 0.2, shuffle: bool = True, random_state: Optional[int] = None):
+    """Simple train/test split with optional shuffling and fixed seed.
+
+    Args:
+        X: Features.
+        y: Target labels.
+        test_size: Proportion for the test set (0,1).
+        shuffle: Whether to shuffle before splitting.
+        random_state: Optional RNG seed for reproducibility.
+
+    Returns:
+        X_train, X_test, y_train, y_test
+    """
     assert 0 < test_size < 1, 'test_size must be between 0 and 1'
     if shuffle:
         rng = np.random.default_rng(random_state)
@@ -143,6 +249,16 @@ def train_test_split_custom(X: pd.DataFrame, y: pd.Series, test_size: float = 0.
 # ------------------------
 
 def kmeans_fit_predict(X_scaled: pd.DataFrame, k: int, random_state: int = 42) -> Tuple[np.ndarray, pd.DataFrame, float]:
+    """Fit KMeans and return labels, centers, and inertia.
+
+    Args:
+        X_scaled: Scaled features.
+        k: Number of clusters.
+        random_state: RNG seed for KMeans.
+
+    Returns:
+        (labels, centers_df, inertia)
+    """
     km = KMeans(n_clusters=k, random_state=random_state, n_init='auto')
     labels = km.fit_predict(X_scaled)
     centers = pd.DataFrame(km.cluster_centers_, columns=X_scaled.columns)
@@ -151,12 +267,18 @@ def kmeans_fit_predict(X_scaled: pd.DataFrame, k: int, random_state: int = 42) -
 
 
 def clustering_metrics(y_true: pd.Series, labels: np.ndarray, X_scaled: pd.DataFrame) -> Dict[str, float]:
+    """Compute ARI and Silhouette metrics for clustering quality."""
     ari = float(adjusted_rand_score(y_true, labels))
     sil = float(silhouette_score(X_scaled, labels))
     return {'ARI': ari, 'Silhouette': sil}
 
 
 def plot_elbow(X_scaled: pd.DataFrame, ks: List[int], save_path: Path, random_state: int = 42) -> List[float]:
+    """Plot inertia across candidate k values (elbow method).
+
+    Returns:
+        List of inertias corresponding to ks.
+    """
     inertias: List[float] = []
     for k in ks:
         km = KMeans(n_clusters=k, random_state=random_state, n_init='auto')
@@ -174,6 +296,7 @@ def plot_elbow(X_scaled: pd.DataFrame, ks: List[int], save_path: Path, random_st
 
 
 def plot_cluster_scatter(X_scaled: pd.DataFrame, labels: np.ndarray, centers: pd.DataFrame, x_col: str, y_col: str, save_path: Path) -> None:
+    """2D scatter of clusters and marked centroids for two selected features."""
     plt.figure(figsize=(6,5))
     plt.scatter(X_scaled[x_col], X_scaled[y_col], c=labels, cmap='viridis', alpha=0.8, edgecolor='k')
     plt.scatter(centers[x_col], centers[y_col], c='red', s=120, marker='X', label='Centers')
@@ -186,6 +309,11 @@ def plot_cluster_scatter(X_scaled: pd.DataFrame, labels: np.ndarray, centers: pd
 
 
 def plot_pca_clusters(X_scaled: pd.DataFrame, labels: np.ndarray, save_path: Path, random_state: int = 42) -> float:
+    """PCA projection to 2D for visualization.
+
+    Returns:
+        float: Total explained variance ratio across the two components.
+    """
     pca = PCA(n_components=2, random_state=random_state)
     X_pca = pca.fit_transform(X_scaled)
     explained = float(pca.explained_variance_ratio_.sum())
@@ -204,6 +332,11 @@ def plot_pca_clusters(X_scaled: pd.DataFrame, labels: np.ndarray, save_path: Pat
 # ------------------------
 
 def decision_tree_train_plot(X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.DataFrame, y_test: pd.Series, feature_names: List[str], class_names: List[str], plot_path: Path, max_depth: int = 4) -> Dict[str, float]:
+    """Train a Decision Tree, save a plot, and return evaluation metrics.
+
+    Returns:
+        dict: accuracy, precision, recall, f1 (macro averages).
+    """
     dt = DecisionTreeClassifier(random_state=42, max_depth=max_depth)
     dt.fit(X_train, y_train)
     y_pred = dt.predict(X_test)
@@ -219,6 +352,7 @@ def decision_tree_train_plot(X_train: pd.DataFrame, y_train: pd.Series, X_test: 
 
 
 def knn_train_eval(X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.DataFrame, y_test: pd.Series, k: int = 5) -> Dict[str, float]:
+    """Train/evaluate a k-NN classifier, returning common metrics."""
     knn = KNeighborsClassifier(n_neighbors=k)
     knn.fit(X_train, y_train)
     y_pred = knn.predict(X_test)
@@ -233,6 +367,10 @@ def knn_train_eval(X_train: pd.DataFrame, y_train: pd.Series, X_test: pd.DataFra
 # ------------------------
 
 def generate_synthetic_transactions(n_transactions: int = 40, rng_seed: int = 42) -> List[List[str]]:
+    """Generate synthetic market-basket transactions for association rules.
+
+    Biases a few co-occurrence pairs (e.g., milk/bread) for demonstration.
+    """
     item_pool = ['milk','bread','butter','cheese','eggs','beer','diapers','apples','bananas','cereal',
                  'chicken','rice','pasta','tomatoes','onions','yogurt','chips','soda','coffee','tea']
     rng = np.random.default_rng(rng_seed)
@@ -254,6 +392,12 @@ def generate_synthetic_transactions(n_transactions: int = 40, rng_seed: int = 42
 
 
 def apriori_rules(transactions: List[List[str]], min_support: float = 0.2, min_confidence: float = 0.5) -> pd.DataFrame:
+    """Mine association rules using mlxtend when available; else fallback.
+
+    Returns a DataFrame with columns: antecedents, consequents, support,
+    confidence, lift. In fallback mode, only simple pairwise rules are
+    considered.
+    """
     try:
         from mlxtend.frequent_patterns import apriori, association_rules
         from mlxtend.preprocessing import TransactionEncoder
@@ -302,5 +446,6 @@ def apriori_rules(transactions: List[List[str]], min_support: float = 0.2, min_c
 # ------------------------
 
 def save_json(obj: dict, path: Path) -> None:
+    """Save an object to JSON with indentation for readability."""
     with open(path, 'w') as f:
         json.dump(obj, f, indent=2)

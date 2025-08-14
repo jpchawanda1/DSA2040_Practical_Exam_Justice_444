@@ -23,7 +23,7 @@ def _ensure_root_on_path():
     return cwd
 
 _ensure_root_on_path()
-from utils import dm
+from utils import dm  # local helper functions for DM tasks
 import pandas as pd
 
 ART = Path('data_mining') / 'artifacts'
@@ -31,6 +31,7 @@ ART.mkdir(parents=True, exist_ok=True)
 
 
 def part_a_classification():
+    """Train/evaluate Decision Tree and KNN on scaled Iris features."""
     df = dm.load_or_generate('iris')
     X, y, feature_cols = dm.split_features(df)
     X_scaled = dm.scale_features(X)
@@ -56,6 +57,7 @@ def part_a_classification():
 
 
 def part_b_association_rules():
+    """Generate synthetic baskets and mine association rules (with fallback)."""
     transactions = dm.generate_synthetic_transactions(n_transactions=40, rng_seed=42)
     rules = dm.apriori_rules(transactions, min_support=0.2, min_confidence=0.5)
     if rules is None or (hasattr(rules, 'empty') and rules.empty):
@@ -78,6 +80,7 @@ def part_b_association_rules():
 
 
 def main():
+    # Run both parts and persist artifacts in data_mining/artifacts
     part_a_classification()
     part_b_association_rules()
 

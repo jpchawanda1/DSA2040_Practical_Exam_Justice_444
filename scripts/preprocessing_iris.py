@@ -23,21 +23,21 @@ def _ensure_root_on_path():
   return cwd
 
 _ensure_root_on_path()
-from utils import dm
+from utils import dm  # local helper functions for DM tasks
 
 ART = Path('data_mining') / 'artifacts'
 ART.mkdir(parents=True, exist_ok=True)
 
 
 def main():
-    # Load/generate
+  # Load/generate dataset
     df = dm.load_or_generate('iris')
 
     # Preprocess
     X, y, feature_cols = dm.split_features(df)
     X_scaled = dm.scale_features(X)
 
-    # EDA outputs
+  # EDA outputs: stats and diagnostic plots
     dm.save_summary_stats(X_scaled, ART / 'summary_stats.csv')
     dm.plot_pairplot(X_scaled.join(y), hue='class', save_path=ART / 'pairplot_scaled.png')
     dm.plot_correlation_heatmap(X_scaled, save_path=ART / 'correlation_heatmap.png')

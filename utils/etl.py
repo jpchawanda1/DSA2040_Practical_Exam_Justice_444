@@ -1,3 +1,14 @@
+"""
+ETL utilities for building the SQLite retail star schema.
+
+Pipeline stages:
+1) Extract: read the provided Excel file.
+2) Clean: standardize types, strip whitespace, drop invalid rows, compute TotalSales.
+3) Transform: limit to a year window (or fallback), derive Customer/Product/Time dimensions.
+4) Load: recreate schema, load dims, load fact, create useful indexes.
+
+All functions are pure except for load_* (DB writes) and run_etl (end-to-end orchestration).
+"""
 from __future__ import annotations
 
 import logging
@@ -21,6 +32,12 @@ DEFAULT_EXCEL_FILENAME = "Online Retail.xlsx"
 # Extract & Clean
 # ------------------------
 def load_excel(data_dir: Path, excel_filename: str = DEFAULT_EXCEL_FILENAME) -> pd.DataFrame:
+    """Read the Online Retail Excel file into a DataFrame.
+
+    Args:
+        data_dir: Directory containing the Excel file.
+        excel_filename: Filename (defaults to Online Retail.xlsx).
+    """
     path = (data_dir / excel_filename).resolve()
     if not path.exists():
         raise FileNotFoundError(f"Expected Excel file at {path}")
@@ -32,6 +49,12 @@ def load_excel(data_dir: Path, excel_filename: str = DEFAULT_EXCEL_FILENAME) -> 
 
 
 def clean_raw(df_raw: pd.DataFrame) -> pd.DataFrame:
+    """Clean and type-normalize the raw extract.
+
+    - Drops rows with missing required fields, coerces types.
+    - Removes negative Quantity and nonpositive UnitPrice lines.
+    - Adds TotalSales = Quantity * UnitPrice.
+    """
     df = df_raw.copy()
     required_cols = ['InvoiceNo', 'StockCode', 'Quantity', 'UnitPrice', 'InvoiceDate']
     if 'CustomerID' in df.columns:
@@ -56,6 +79,12 @@ def clean_raw(df_raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def select_last_year_window(df: pd.DataFrame, fixed_current_date: pd.Timestamp) -> Tuple[pd.DataFrame, pd.Timestamp, pd.Timestamp]:
+    """Limit data to an approximate last-365-days window.
+
+    If the dataset is older than 30 days relative to fixed_current_date, we
+    anchor the window to the data's max date instead for robustness.
+    Returns the sliced DataFrame and the effective [current_date, start_date].
+    """
     current_date = fixed_current_date
     last_year_start = current_date - pd.Timedelta(days=365)
 
@@ -76,6 +105,7 @@ def select_last_year_window(df: pd.DataFrame, fixed_current_date: pd.Timestamp) 
 # Dimensions
 # ------------------------
 def build_customer_dim(df_last_year: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate per-customer metrics and assign surrogate keys."""
     customer_group = df_last_year.groupby('CustomerID', dropna=False)
     customer_dim = customer_group.agg(
         customer_total_quantity=('Quantity', 'sum'),
@@ -92,6 +122,7 @@ def build_customer_dim(df_last_year: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_product_dim(df_last_year: pd.DataFrame) -> pd.DataFrame:
+    """Derive product dimension with a simple keyword-based Category."""
     product_group = df_last_year.groupby(['StockCode', 'Description'], dropna=False)
     product_dim = product_group.agg(
         product_total_quantity=('Quantity', 'sum'),
@@ -112,6 +143,7 @@ def build_product_dim(df_last_year: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_time_dim(df_last_year: pd.DataFrame) -> pd.DataFrame:
+    """Construct a time dimension from unique normalized invoice dates."""
     unique_dates = pd.to_datetime(df_last_year['InvoiceDate'].dt.normalize().unique())
     time_dim = pd.DataFrame({'Date': unique_dates})
     time_dim['DateKey'] = time_dim['Date'].dt.strftime('%Y%m%d').astype(int)
@@ -129,6 +161,7 @@ def build_time_dim(df_last_year: pd.DataFrame) -> pd.DataFrame:
 # Fact
 # ------------------------
 def build_fact(df_last_year: pd.DataFrame, customer_dim: pd.DataFrame, product_dim: pd.DataFrame, time_dim: pd.DataFrame) -> pd.DataFrame:
+    """Assemble SalesFact with foreign keys to all three dimensions."""
     cust_map = dict(zip(customer_dim['CustomerIDOriginal'], customer_dim['CustomerKey']))
     df_fact = df_last_year.copy()
     df_fact['CustomerKey'] = df_fact['CustomerID'].map(cust_map)
@@ -214,6 +247,7 @@ DDL_STATEMENTS = [
 
 
 def recreate_schema(conn: sqlite3.Connection) -> None:
+    """Drop and recreate all tables via DDL_STATEMENTS."""
     cur = conn.cursor()
     for stmt in DDL_STATEMENTS:
         cur.executescript(stmt)
@@ -221,6 +255,7 @@ def recreate_schema(conn: sqlite3.Connection) -> None:
 
 
 def load_dimensions(conn: sqlite3.Connection, customer_dim: pd.DataFrame, product_dim: pd.DataFrame, time_dim: pd.DataFrame) -> None:
+    """Load dimension tables and create supporting indexes."""
     customer_dim.to_sql('CustomerDim', conn, if_exists='append', index=False)
     product_dim.to_sql('ProductDim', conn, if_exists='append', index=False)
     time_dim.to_sql('TimeDim', conn, if_exists='append', index=False)
@@ -232,6 +267,7 @@ def load_dimensions(conn: sqlite3.Connection, customer_dim: pd.DataFrame, produc
 
 
 def load_fact(conn: sqlite3.Connection, fact_df: pd.DataFrame) -> None:
+    """Load the fact table and create indexes for common query patterns."""
     fact_df.to_sql('SalesFact', conn, if_exists='append', index=False)
     cur = conn.cursor()
     cur.execute('CREATE INDEX IF NOT EXISTS idx_fact_date ON SalesFact(DateKey);')
@@ -249,6 +285,7 @@ def run_etl(
     db_path: Path,
     fixed_current_date: pd.Timestamp,
 ) -> Dict[str, int]:
+    """Execute the full ETL and return a count summary per stage/table."""
     df_excel = load_excel(excel_path.parent, excel_path.name)
     raw_row_count = len(df_excel)
 
