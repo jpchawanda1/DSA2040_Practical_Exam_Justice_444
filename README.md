@@ -15,16 +15,85 @@ This submission includes a complete retail data warehouse build (ETL + OLAP) and
   - Task 2: KMeans clustering with metrics and visualizations.
   - Task 3: Classification (Decision Tree + KNN) and Association Rule Mining (Apriori or fallback).
 
- 
+ ## 2) Project Structure (key items)
 
-## 2) Datasets Used
+Full project tree overview:
+
+```text
+DSA2040_Practical_Exam_Justice_444/
+├─ data_warehouse_notebook/
+│  ├─ etl_task2.ipynb
+│  ├─ task3_olap_analysis.ipynb
+│  ├─ retail_data_warehouse.ipynb
+│  ├─ retail_dw.db
+│  └─ artifacts/
+│     ├─ fig_sales_by_country.png
+│     ├─ fig_quarterly_trend_country.png
+│     └─ fig_task3_sales_by_country.png
+├─ data_mining_notebook/
+│  ├─ task1_data_preprocessing.ipynb
+│  ├─ task2_clustering.ipynb
+│  ├─ task3_classification_association.ipynb
+│  ├─ task3b_association_rules.ipynb
+│  └─ artifacts/
+│     ├─ boxplots_scaled.png
+│     ├─ classification_comparison.csv
+│     ├─ clusters_pca.png
+│     ├─ clusters_scatter_petal.png
+│     ├─ correlation_heatmap.png
+│     ├─ decision_tree_plot.png
+│     ├─ elbow_curve.png
+│     ├─ k3_centers.csv
+│     ├─ pairplot_scaled.png
+│     ├─ summary_stats.csv
+│     ├─ task1_metadata.json
+│     ├─ task2_clustering_metrics.csv
+│     ├─ task2_clustering_metrics.json
+│     ├─ task3b_metadata.json
+│     └─ top5_rules_partB.csv
+├─ scripts/
+│  ├─ etl_retail.py
+│  ├─ preprocessing_iris.py
+│  ├─ clustering_iris.py
+│  └─ mining_iris_basket.py
+├─ utils/
+│  ├─ __init__.py
+│  ├─ etl.py
+│  ├─ olap.py
+│  └─ dm.py
+├─ sql/
+│  ├─ schema.sql
+│  └─ olap_queries.sql
+├─ reports/
+│  └─ olap_analysis.md
+├─ docs/
+│  └─ schema_star.svg
+├─ raw_data/
+│  └─ Online Retail.xlsx
+├─ .vscode/
+│  └─ settings.json
+├─ requirements.txt
+├─ README.md
+├─ LICENSE
+└─ .gitattributes
+```
+- `data_warehouse_notebook/etl_task2.ipynb` – ETL: reads Excel, cleans, builds dims, loads fact, writes `retail_dw.db`.
+- `data_warehouse_notebook/task3_olap_analysis.ipynb` – OLAP queries (roll-up, drill-down, slice) + visualization.
+- `data_warehouse_notebook/retail_dw.db` – SQLite database produced by ETL.
+- `data_mining_notebook/task1_data_preprocessing.ipynb` – preprocessing, scaling/encoding, EDA plots.
+- `data_mining_notebook/task2_clustering.ipynb` – KMeans clustering, metrics, elbow curve, PCA plot.
+- `data_mining_notebook/task3_classification_association.ipynb` – Decision Tree & KNN + association rules.
+- `data_mining_notebook/task3b_association_rules.ipynb` – stand-alone association rules focus.
+- `data_mining_notebook/artifacts/` – generated figures, CSVs, and metrics JSONs.
+
+## 3) Datasets Used
 
 - Online Retail (UCI) – provided Excel file at `raw_data/Online Retail.xlsx`.
   - Used for the DW ETL to build Customer, Product, and Time dimensions and the Sales fact.
 - Iris dataset (from scikit-learn) – used in data mining preprocessing, clustering, and classification tasks.
 - Synthetic transactional basket data – used only for association rule mining where a retail transaction dataset is not available in the repo.
 
-## 3) Implemented Star Schema (as built)
+## 4) Implemented Star Schema (as built)
 
 Grain: One row per invoice line (line-item at time of sale).
 
@@ -66,16 +135,6 @@ Notes:
 
 Why star schema over snowflake? Star keeps joins minimal and queries simple/fast for OLAP; denormalization (e.g., Category on ProductDim) trades a small amount of storage for better query performance and ease of use.
 
-## 4) Project Structure (key items)
-
-- `data_warehouse_notebook/etl_task2.ipynb` – ETL: reads Excel, cleans, builds dims, loads fact, writes `retail_dw.db`.
-- `data_warehouse_notebook/task3_olap_analysis.ipynb` – OLAP queries (roll-up, drill-down, slice) + visualization.
-- `data_warehouse_notebook/retail_dw.db` – SQLite database produced by ETL.
-- `data_mining_notebook/task1_data_preprocessing.ipynb` – preprocessing, scaling/encoding, EDA plots.
-- `data_mining_notebook/task2_clustering.ipynb` – KMeans clustering, metrics, elbow curve, PCA plot.
-- `data_mining_notebook/task3_classification_association.ipynb` – Decision Tree & KNN + association rules.
-- `data_mining_notebook/task3b_association_rules.ipynb` – stand-alone association rules focus.
-- `data_mining_notebook/artifacts/` – generated figures, CSVs, and metrics JSONs.
 
 ## 5) How to Run (Windows cmd)
 
