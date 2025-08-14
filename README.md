@@ -1,279 +1,116 @@
-# DSA 2040 Practical Exam – Retail Data Warehouse
+# DSA 2040 Practical Exam – Submission Overview
 
-## Overview
-This project builds a comprehensive star‑schema data warehouse from the provided `raw_data/Online Retail.xlsx` dataset (classic UCI Online Retail). It supports analytics:
-- Sales by product category per quarter
-- Customer demographic & geographic trends
-- Inventory movement proxy (net units sold)
-- Return analysis (credit / negative lines)
+This submission includes a complete retail data warehouse build (ETL + OLAP) and a separate data mining component (preprocessing, clustering, classification, association rules). It uses the provided Online Retail Excel file for the warehouse and standard ML datasets transactions for the data mining tasks.
 
-## Star Schema Design
+## 1) Overview of the Submission
 
-### Grain
-One row in the fact table = one invoice line (InvoiceNo + StockCode) at the time of sale or return.
+- Data Warehouse (DW):
+  - Star schema implemented in SQLite with a single transactional fact and three dimensions.
+  - ETL from `raw_data/Online Retail.xlsx` into `data_warehouse_notebook/retail_dw.db`.
+  - OLAP queries and one visualization demonstrating roll-up, drill-down, and slice operations.
 
-### Tables Structure
-- **Fact Table**: `FactSales` – transactional measures
-- **Dimensions**: `DimDate`, `DimProduct`, `DimCustomer`, `DimGeography`
-- **Degenerate Dimension**: `invoice_no` kept in the fact (no separate dimension)
+- Data Mining (DM):
+  - Task 1: Data preprocessing and exploration.
+  - Task 2: KMeans clustering with metrics and visualizations.
+  - Task 3: Classification (Decision Tree + KNN) and Association Rule Mining (Apriori or fallback).
 
-### Fact Measures & Flags
-- `quantity` (negative = return)
-- `unit_price`
-- `sales_amount` = quantity * unit_price (negative for returns)
-- `sales_amount_abs` = ABS(sales_amount)
-- `is_return` (0/1)
+Key notebooks are listed in Project Structure below.
 
-### Handling Returns & Missing Data
-- Returns: Negative quantity preserved; flag simplifies filtering.
-- Missing CustomerID: Mapped to surrogate anonymous row (customer_key = 0).
-- Product Category: Default 'Unknown' until enriched.
-- Geography Denormalization: `geography_key` copied to fact for faster slicing.
+## 2) Datasets Used
 
-### ASCII Schema Diagram
+- Online Retail (UCI) – provided Excel file at `raw_data/Online Retail.xlsx`.
+  - Used for the DW ETL to build Customer, Product, and Time dimensions and the Sales fact.
+- Iris dataset (from scikit-learn) – used in data mining preprocessing, clustering, and classification tasks.
+- Synthetic transactional basket data – used only for association rule mining where a retail transaction dataset is not available in the repo; Apriori is run via `mlxtend` if installed, with a simple pairwise fallback if not.
+
+## 3) Implemented Star Schema (as built)
+
+Grain: One row per invoice line (line-item at time of sale).
+
+Tables created in `retail_dw.db`:
+- SalesFact(FactID, InvoiceNo, ProductKey, CustomerKey, DateKey, Quantity, UnitPrice, TotalSales, Country)
+- CustomerDim(CustomerKey, CustomerIDOriginal, Country, customer_total_quantity, customer_total_sales, invoice_count, first_purchase_date, last_purchase_date)
+- ProductDim(ProductKey, StockCode, Description, Category, product_total_quantity, product_total_sales, distinct_invoices, first_sale_date, last_sale_date)
+- TimeDim(DateKey, Date, Year, Quarter, Month, MonthName, Day, DayOfWeek, IsWeekend)
+
+ASCII schema:
 ```
-                 +------------------+
-                 |    DimDate       |
-                 |------------------|
-                 | date_key (PK)    |
-                 | full_date        |
-                 | day, month       |
-                 | month_name       |
-                 | quarter, year    |
-                 | week_of_year     |
-                 | day_of_week      |
-                 | is_weekend       |
-                 +---------^--------+
-                           |
-+------------------+       |      +--------------------+
-|   DimProduct     |       |      |    DimCustomer     |
-|------------------|       |      |--------------------|
-| product_key (PK) |       |      | customer_key (PK)  |
-| stock_code       |       |      | customer_id        |
-| description      |       |      | customer_name      |
-| category         |       |      | gender             |
-| subcategory      |       |      | birth_year         |
-| unit_of_measure  |       |      | geography_key (FK)-+----+
-| first_sale_date_key (FK)-+      | customer_since_date_key |
-| is_active        |              | segment            |    |
-+---------^--------+              +---------^----------+    |
-          |                                 |               |
-          |                                 |               |
-          |                      +----------+--------+      |
-          |                      |   DimGeography    |      |
-          |                      |-------------------|      |
-          |                      | geography_key (PK)|<-----+
-          |                      | country           |
-          |                      | region            |
-          |                      +-------------------+
-          |
-                 +----------------------------------------------+
-                 |                 FactSales                   |
-                 |----------------------------------------------|
-                 | fact_sales_key (PK)                         |
-                 | date_key (FK)                               |
-                 | product_key (FK)                            |
-                 | customer_key (FK)                           |
-                 | geography_key (FK)                          |
-                 | invoice_no (degenerate)                     |
-                 | quantity, unit_price                        |
-                 | sales_amount, sales_amount_abs              |
-                 | is_return                                   |
-                 | load_timestamp                              |
-                 +----------------------------------------------+
+       +-----------------+          +------------------+
+       |   CustomerDim   |          |     TimeDim      |
+       |-----------------|          |------------------|
+       | CustomerKey (PK)|          | DateKey (PK)     |
+       | CustomerIDOrig  |          | Date, Y,Q,M,...  |
+       | Country         |          +---------^--------+
+       +---------^-------+                    |
+                 |                            |
+       +---------+-------+          +---------+--------+
+       |  ProductDim     |          |     SalesFact    |
+       |-----------------|          |------------------|
+       | ProductKey (PK) |<---------| ProductKey (FK)  |
+       | StockCode       |    +-----| CustomerKey (FK) |
+       | Description     |    |     | DateKey (FK)     |
+       | Category        |    |     | InvoiceNo        |
+       +-----------------+    |     | Quantity         |
+                               |     | UnitPrice        |
+                               |     | TotalSales       |
+                               |     | Country          |
+                               |     +------------------+
+                               +----- CustomerDim ----->
+                                      TimeDim --------->
 ```
 
-### Mermaid (optional)
-```mermaid
-erDiagram
-  DimDate ||--o{ FactSales : "date_key"
-  DimProduct ||--o{ FactSales : "product_key"
-  DimCustomer ||--o{ FactSales : "customer_key"
-  DimGeography ||--o{ FactSales : "geography_key"
-  DimGeography ||--o{ DimCustomer : "geography_key"
-```
+Notes:
+- We keep Country on the fact for convenience and also capture dominant country at the customer level. No separate GeographyDim in this build.
+- Product category is inferred via simple keywords; it can be replaced by a governed product master later.
 
-### Why Star Schema (vs Snowflake)
-Star keeps queries simple & fast (fewer joins) for BI aggregations. Snowflake would save small storage by normalizing categories/geography but slow common rollups and add complexity.
+## 4) Project Structure (key items)
 
-## SQLite DDL
+- `data_warehouse_notebook/etl_task2.ipynb` – ETL: reads Excel, cleans, builds dims, loads fact, writes `retail_dw.db`.
+- `data_warehouse_notebook/task3_olap_analysis.ipynb` – OLAP queries (roll-up, drill-down, slice) + visualization.
+- `data_warehouse_notebook/retail_dw.db` – SQLite database produced by ETL.
+- `data_mining_notebook/task1_data_preprocessing.ipynb` – preprocessing, scaling/encoding, EDA plots.
+- `data_mining_notebook/task2_clustering.ipynb` – KMeans clustering, metrics, elbow curve, PCA plot.
+- `data_mining_notebook/task3_classification_association.ipynb` – Decision Tree & KNN + association rules.
+- `data_mining_notebook/task3b_association_rules.ipynb` – stand-alone association rules focus.
+- `data_*/*/artifacts/` – generated figures, CSVs, and metrics JSONs.
 
-```sql
-PRAGMA foreign_keys = ON;
+## 5) How to Run (Windows cmd)
 
--- Dimension: Date
-CREATE TABLE DimDate (
-    date_key             INTEGER PRIMARY KEY,
-    full_date            DATE NOT NULL,
-    day                  INTEGER NOT NULL CHECK(day BETWEEN 1 AND 31),
-    month                INTEGER NOT NULL CHECK(month BETWEEN 1 AND 12),
-    month_name           TEXT NOT NULL,
-    quarter              INTEGER NOT NULL CHECK(quarter BETWEEN 1 AND 4),
-    year                 INTEGER NOT NULL,
-    week_of_year         INTEGER,
-    day_of_week          INTEGER CHECK(day_of_week BETWEEN 1 AND 7),
-    is_weekend           INTEGER NOT NULL CHECK(is_weekend IN (0,1))
-);
-CREATE INDEX idx_dimdate_year_quarter ON DimDate(year, quarter);
-CREATE INDEX idx_dimdate_full_date ON DimDate(full_date);
+Set up a virtual environment and required packages:
 
--- Dimension: Geography
-CREATE TABLE DimGeography (
-    geography_key    INTEGER PRIMARY KEY,
-    country          TEXT NOT NULL,
-    region           TEXT
-);
-CREATE UNIQUE INDEX uq_dimgeog_country_region ON DimGeography(country, IFNULL(region,''));
-
--- Dimension: Product
-CREATE TABLE DimProduct (
-    product_key            INTEGER PRIMARY KEY,
-    stock_code             TEXT NOT NULL,
-    description            TEXT,
-    category               TEXT NOT NULL DEFAULT 'Unknown',
-    subcategory            TEXT,
-    unit_of_measure        TEXT NOT NULL DEFAULT 'each',
-    first_sale_date_key    INTEGER,
-    is_active              INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
-    FOREIGN KEY (first_sale_date_key) REFERENCES DimDate(date_key)
-);
-CREATE UNIQUE INDEX uq_dimproduct_stock_code ON DimProduct(stock_code);
-CREATE INDEX idx_dimproduct_category ON DimProduct(category);
-CREATE INDEX idx_dimproduct_category_subcat ON DimProduct(category, subcategory);
-
--- Dimension: Customer
-CREATE TABLE DimCustomer (
-    customer_key              INTEGER PRIMARY KEY,
-    customer_id               INTEGER,
-    customer_name             TEXT,
-    gender                    TEXT,
-    birth_year                INTEGER,
-    geography_key             INTEGER NOT NULL,
-    customer_since_date_key   INTEGER,
-    segment                   TEXT NOT NULL DEFAULT 'Retail',
-    FOREIGN KEY (geography_key) REFERENCES DimGeography(geography_key),
-    FOREIGN KEY (customer_since_date_key) REFERENCES DimDate(date_key)
-);
-CREATE UNIQUE INDEX uq_dimcustomer_customer_id ON DimCustomer(customer_id);
-CREATE INDEX idx_dimcustomer_geog ON DimCustomer(geography_key);
-CREATE INDEX idx_dimcustomer_segment ON DimCustomer(segment);
-
--- Fact: Sales (Invoice Line)
-CREATE TABLE FactSales (
-    fact_sales_key    INTEGER PRIMARY KEY,
-    date_key          INTEGER NOT NULL,
-    product_key       INTEGER NOT NULL,
-    customer_key      INTEGER NOT NULL,
-    geography_key     INTEGER NOT NULL,
-    invoice_no        TEXT NOT NULL,
-    quantity          INTEGER NOT NULL,
-    unit_price        NUMERIC NOT NULL,
-    sales_amount      NUMERIC NOT NULL,
-    sales_amount_abs  NUMERIC NOT NULL,
-    is_return         INTEGER NOT NULL CHECK(is_return IN (0,1)),
-    load_timestamp    DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (date_key) REFERENCES DimDate(date_key),
-    FOREIGN KEY (product_key) REFERENCES DimProduct(product_key),
-    FOREIGN KEY (customer_key) REFERENCES DimCustomer(customer_key),
-    FOREIGN KEY (geography_key) REFERENCES DimGeography(geography_key)
-);
-CREATE INDEX idx_factsales_date ON FactSales(date_key);
-CREATE INDEX idx_factsales_product_date ON FactSales(product_key, date_key);
-CREATE INDEX idx_factsales_customer_date ON FactSales(customer_key, date_key);
-CREATE INDEX idx_factsales_geog_date ON FactSales(geography_key, date_key);
-CREATE INDEX idx_factsales_invoice ON FactSales(invoice_no);
-
--- Integrity triggers
-CREATE TRIGGER trg_factsales_before_insert
-BEFORE INSERT ON FactSales
-FOR EACH ROW
-BEGIN
-  SELECT CASE WHEN NEW.sales_amount != NEW.quantity * NEW.unit_price
-    THEN RAISE(ABORT,'sales_amount must equal quantity * unit_price') END;
-  SELECT CASE WHEN NEW.sales_amount_abs != ABS(NEW.sales_amount)
-    THEN RAISE(ABORT,'sales_amount_abs must equal ABS(sales_amount)') END;
-  SELECT CASE WHEN (NEW.quantity < 0 AND NEW.is_return = 0)
-    OR (NEW.quantity > 0 AND NEW.is_return = 1)
-    THEN RAISE(ABORT,'is_return inconsistent with quantity sign') END;
-END;
-
-CREATE TRIGGER trg_factsales_before_update
-BEFORE UPDATE ON FactSales
-FOR EACH ROW
-BEGIN
-  SELECT CASE WHEN NEW.sales_amount != NEW.quantity * NEW.unit_price
-    THEN RAISE(ABORT,'sales_amount must equal quantity * unit_price') END;
-  SELECT CASE WHEN NEW.sales_amount_abs != ABS(NEW.sales_amount)
-    THEN RAISE(ABORT,'sales_amount_abs must equal ABS(sales_amount)') END;
-  SELECT CASE WHEN (NEW.quantity < 0 AND NEW.is_return = 0)
-    OR (NEW.quantity > 0 AND NEW.is_return = 1)
-    THEN RAISE(ABORT,'is_return inconsistent with quantity sign') END;
-END;
-```
-
-## Example Analytical Queries
-
-Sales by category per quarter:
-```sql
-SELECT d.year, d.quarter, p.category,
-       SUM(f.sales_amount) AS total_sales
-FROM FactSales f
-JOIN DimDate d ON f.date_key = d.date_key
-JOIN DimProduct p ON f.product_key = p.product_key
-WHERE f.is_return = 0
-GROUP BY d.year, d.quarter, p.category
-ORDER BY d.year, d.quarter, p.category;
-```
-
-Return rate by category:
-```sql
-SELECT p.category,
-       SUM(CASE WHEN f.is_return=1 THEN -f.quantity ELSE 0 END) AS units_returned,
-       SUM(CASE WHEN f.is_return=0 THEN f.quantity ELSE 0 END) AS units_sold,
-       ROUND(1.0 * SUM(CASE WHEN f.is_return=1 THEN -f.quantity ELSE 0 END) /
-             NULLIF(SUM(CASE WHEN f.is_return=0 THEN f.quantity ELSE 0 END),0), 4) AS return_rate
-FROM FactSales f
-JOIN DimProduct p ON f.product_key = p.product_key
-GROUP BY p.category
-ORDER BY return_rate DESC;
-```
-
-Geography sales:
-```sql
-SELECT g.country, d.year, d.quarter, SUM(f.sales_amount) AS net_sales
-FROM FactSales f
-JOIN DimDate d ON f.date_key = d.date_key
-JOIN DimGeography g ON f.geography_key = g.geography_key
-GROUP BY g.country, d.year, d.quarter
-ORDER BY g.country, d.year, d.quarter;
-```
-
-## ETL Outline
-1. Extract Excel to pandas.
-2. Clean & standardize fields; mark returns.
-3. Build dimension surrogate key maps.
-4. Populate dimensions.
-5. Load fact with computed measures.
-6. Run validation checks.
-
-Notebook: `data_warehouse_notebook/retail_data_warehouse.ipynb` contains executable build.
-
-Folder Rename Note: The original `notebooks/` directory has been migrated to `data_warehouse_notebook/` for clearer naming. The legacy folder is temporarily retained (with the original copies and generated artifacts like figures / `retail_dw.db`) until you confirm cleanup. Let me know if you would like the old folder removed or the database / figures also relocated.
-
-## How to Run (Windows cmd)
 ```cmd
 python -m venv .venv
 .venv\Scripts\activate
-pip install pandas openpyxl notebook
-jupyter notebook
+pip install pandas numpy matplotlib seaborn scikit-learn mlxtend openpyxl jupyter
 ```
-Open the notebook and Run All.
 
-## Next Enhancements
-- SCD Type 2 support for changing product/category
-- Separate purchase/inventory facts for true stock snapshots
-- Data quality audit & anomaly detection
+Run the ETL and OLAP notebooks:
+- Open `data_warehouse_notebook/etl_task2.ipynb` and Run All to generate `retail_dw.db`.
+- Then open `data_warehouse_notebook/task3_olap_analysis.ipynb` and Run All to execute OLAP queries and save the country chart to `data_warehouse_notebook/artifacts/`.
 
-## License
+Run the Data Mining notebooks similarly in `data_mining_notebook/` (Run All). If `mlxtend` is not installed, the notebooks will fall back to a simple pairwise association rules approximation.
+
+## 6) Deliverables and Artifacts
+
+- SQLite database: `data_warehouse_notebook/retail_dw.db`
+- OLAP figure(s): `data_warehouse_notebook/artifacts/fig_task3_sales_by_country.png`
+- Data mining artifacts: multiple PNGs/CSVs/JSONs under `data_mining_notebook/artifacts/` (e.g., elbow curve, PCA plot, decision tree, top rules CSV, metrics JSON).
+
+## 7) Self‑Assessment (what’s done vs pending)
+
+Completed:
+- ETL pipeline from Excel with cleaning, outlier handling, and robust date window fallback.
+- Star schema build with CustomerDim, ProductDim (newly added), TimeDim, and SalesFact referencing ProductKey.
+- Indexes and sanity tests (foreign key coverage, TotalSales consistency, simple analytical checks).
+- OLAP notebook with roll‑up, drill‑down, and category slice; visualization saved to artifacts.
+- Data mining notebooks for preprocessing, clustering, classification, and association rules (with fallback).
+
+Limitations / Next steps:
+- No separate GeographyDim; Country is kept on fact and dominant country tracked on CustomerDim. If needed, add a GeographyDim and refactor queries.
+- Product Category is inferred via keywords; replace with a governed product/category lookup for accuracy.
+- Association rules use synthetic transactions due to the lack of basket-level retail data in the repo; integrate a real basket dataset for stronger results when available.
+- Documentation diagrams are concise; a formal ERD could be added.
+
+## 8) License
+
 See `LICENSE`.
-
