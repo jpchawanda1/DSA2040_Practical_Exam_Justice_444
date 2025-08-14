@@ -15,14 +15,14 @@ This submission includes a complete retail data warehouse build (ETL + OLAP) and
   - Task 2: KMeans clustering with metrics and visualizations.
   - Task 3: Classification (Decision Tree + KNN) and Association Rule Mining (Apriori or fallback).
 
-Key notebooks are listed in Project Structure below.
+ 
 
 ## 2) Datasets Used
 
 - Online Retail (UCI) – provided Excel file at `raw_data/Online Retail.xlsx`.
   - Used for the DW ETL to build Customer, Product, and Time dimensions and the Sales fact.
 - Iris dataset (from scikit-learn) – used in data mining preprocessing, clustering, and classification tasks.
-- Synthetic transactional basket data – used only for association rule mining where a retail transaction dataset is not available in the repo; Apriori is run via `mlxtend` if installed, with a simple pairwise fallback if not.
+- Synthetic transactional basket data – used only for association rule mining where a retail transaction dataset is not available in the repo.
 
 ## 3) Implemented Star Schema (as built)
 
@@ -75,16 +75,16 @@ Why star schema over snowflake? Star keeps joins minimal and queries simple/fast
 - `data_mining_notebook/task2_clustering.ipynb` – KMeans clustering, metrics, elbow curve, PCA plot.
 - `data_mining_notebook/task3_classification_association.ipynb` – Decision Tree & KNN + association rules.
 - `data_mining_notebook/task3b_association_rules.ipynb` – stand-alone association rules focus.
-- `data_*/*/artifacts/` – generated figures, CSVs, and metrics JSONs.
+- `data_mining_notebook/artifacts/` – generated figures, CSVs, and metrics JSONs.
 
 ## 5) How to Run (Windows cmd)
 
-Set up a virtual environment and required packages:
+Set up a virtual environment and install dependencies:
 
 ```cmd
 python -m venv .venv
 .venv\Scripts\activate
-pip install pandas numpy matplotlib seaborn scikit-learn mlxtend openpyxl jupyter
+pip install -r requirements.txt
 ```
 
 Run the ETL and OLAP notebooks or scripts:
@@ -103,19 +103,17 @@ python scripts\clustering_iris.py
 python scripts\mining_iris_basket.py
 ```
 
-Run the Data Mining notebooks similarly in `data_mining_notebook/` (Run All). If `mlxtend` is not installed, the notebooks will fall back to a simple pairwise association rules approximation.
+Run the Data Mining notebooks similarly in `data_mining_notebook/` (Run All). If `mlxtend` is not installed, the notebooks/scripts will fall back to a simple pairwise association rules approximation.
 
 ## 6) Deliverables and Artifacts
 
 - SQLite database: `data_warehouse_notebook/retail_dw.db`
-- OLAP figure(s): `data_warehouse_notebook/artifacts/fig_task3_sales_by_country.png`
-- Data mining artifacts: multiple PNGs/CSVs/JSONs under `data_mining_notebook/artifacts/` (e.g., elbow curve, PCA plot, decision tree, top rules CSV, metrics JSON).
-
-Additional deliverables:
-- `sql/schema.sql` – full DDL for the star schema (SQLite syntax).
-- `sql/olap_queries.sql` – three OLAP queries (roll-up, drill-down, slice).
-- `docs/schema_star.svg` – star schema diagram.
-- `reports/olap_analysis.md` – 200–300 word OLAP analysis.
+- OLAP figures: `data_warehouse_notebook/artifacts/fig_sales_by_country.png`, `data_warehouse_notebook/artifacts/fig_quarterly_trend_country.png`
+- Data mining artifacts: PNGs/CSVs/JSONs under `data_mining_notebook/artifacts/` (e.g., elbow curve, PCA plot, decision tree, top rules CSV, metrics JSON)
+- `sql/schema.sql` – full DDL for the star schema (SQLite syntax)
+- `sql/olap_queries.sql` – three OLAP queries (roll-up, drill-down, slice)
+- `docs/schema_star.svg` – star schema diagram
+- `reports/olap_analysis.md` – 200–300 word OLAP analysis
 
 ## 7) Mapping to Exam Tasks
 
@@ -128,7 +126,7 @@ Additional deliverables:
   - Task 2 (Clustering): `scripts/clustering_iris.py` (+ artifacts)
   - Task 3 (Classification + Association): `scripts/mining_iris_basket.py` (+ artifacts)
 
-## 7) Self‑Assessment (what’s done vs pending)
+## 8) Self‑Assessment (what’s done vs pending)
 
 Completed:
 - ETL pipeline from Excel with cleaning, outlier handling, and robust date window fallback.
