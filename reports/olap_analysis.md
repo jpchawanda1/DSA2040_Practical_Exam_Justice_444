@@ -1,0 +1,9 @@
+# OLAP Analysis Report (Task 3)
+
+The roll-up of total sales by country and quarter highlights revenue concentration in a few markets. Typically, the United Kingdom leads by a sizable margin, with a long tail of countries contributing smaller shares. Larger markets tend to exhibit smoother quarter-to-quarter patterns, while smaller markets are relatively volatile due to lower baselines. This suggests differentiated forecasting approaches: stronger regularization or smoothing for small markets versus seasonal models for large markets.
+
+A drill-down for a specific country (e.g., United Kingdom) reveals monthly seasonality, with peaks aligning to pre‑holiday periods. Identifying months with underperformance provides opportunities for targeted promotions or adjusting inventory policies. Such granularity supports calendar-driven planning and explains deviations from quarterly aggregates.
+
+The slice by product category (leveraging a simple keyword-based Electronics tag in the ProductDim) enables quick mix analysis. Even with a heuristic category, managers can evaluate whether electronics dominate certain periods or geographies and whether mix shifts correlate with revenue spikes. A governed product master would refine these insights, but the current approach demonstrates how dimensional modeling accelerates exploration.
+
+Overall, the warehouse schema (SalesFact with Customer, Product, and Time dimensions) enables flexible OLAP across geography, time, and product. Analysts can pivot quickly without reshaping raw extracts. The design supports strategic decisions (focus markets), operational tuning (inventory allocation ahead of seasonal peaks), and tactical actions (country- and category-specific campaigns). If synthetic or partial data were used, absolute figures may differ from real operations, but the analytical patterns and decision-support value remain illustrative.
